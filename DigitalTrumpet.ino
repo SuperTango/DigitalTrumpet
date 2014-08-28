@@ -1,16 +1,15 @@
 #undef DEBUG 
 
-const int MIC_PIN = A0;
+const int PIEZO_PIN = A3;
 const int TRUMPET_VALVE_1_PIN = 10;
 const int TRUMPET_VALVE_2_PIN = 11;
 const int TRUMPET_VALVE_3_PIN = 12;
 const int DEBUG_PIN = A5;
 
 const int sendDataInterval = 200;
-const int zeroMicValue = 338;
-const int maxMicValue = 348;
-const float micScalingFactor = maxMicValue / 4;
+const int maxPossibleAirVelocityReading = 50;
 
+float airVelocityReadingDivisor = (float)maxPossibleAirVelocityReading / 4.0;
 
 typedef struct {
     char *name;
@@ -18,15 +17,14 @@ typedef struct {
     bool valve1Down;
     bool valve2Down;
     bool valve3Down;
-    unsigned int micValue;
+    unsigned int quantizedAirVelocity;
 } noteStruct;
 
 
-unsigned long totalMicValue = 0;
 unsigned long iterations = 0;
 unsigned long lastSendDataTimestamp;
 unsigned long timestamp;
-unsigned int quantizedMicValue = 0;
+unsigned int maxAirVelocityReading = 0;
 
 const unsigned int noteCount = 13;
 
@@ -49,11 +47,14 @@ noteStruct notes[noteCount] = {
 bool trumpetValve1Down = false;
 bool trumpetValve2Down = false;
 bool trumpetValve3Down = false;
+unsigned int quantizedAirVelocity = 0;
 bool debug = 0;
+noteStruct *lastNote;
+noteStruct note;
 
 void setup() {
     Serial.begin ( 115200 );
-    pinMode ( MIC_PIN, INPUT );
+    pinMode ( PIEZO_PIN, INPUT );
     pinMode ( DEBUG_PIN, INPUT );
     pinMode ( TRUMPET_VALVE_1_PIN, INPUT_PULLUP );
     pinMode ( TRUMPET_VALVE_2_PIN, INPUT_PULLUP );
@@ -63,17 +64,24 @@ void setup() {
 
 void loop() {
     readValves();
-    readMic();
+    readAirVelocity();
     readDebug();
+    iterations++;
 
     timestamp = millis();
     if ( timestamp >= ( lastSendDataTimestamp + sendDataInterval ) ) {
-        quantizedMicValue = ( totalMicValue / iterations ) / micScalingFactor;
+        quantizedAirVelocity = maxAirVelocityReading / airVelocityReadingDivisor;
         lastSendDataTimestamp = timestamp;
-        sendAllData();
+        findNote();
+        if ( debug ) {
+            printDebug();
+        } else {
+            if ( lastNote ) {
+                Serial.write ( lastNote->midiValue );
+            }
+        }
         iterations = 0;
-        totalMicValue = 0;
-        convertNote();
+        maxAirVelocityReading = 0;
     }
 }
 
@@ -83,54 +91,47 @@ void readValves() {
     trumpetValve3Down = ! digitalRead ( TRUMPET_VALVE_3_PIN );
 }
 
-void readMic() {
-    int micValue = analogRead ( MIC_PIN );
-    if ( micValue < zeroMicValue ) {
-        micValue = zeroMicValue + ( zeroMicValue - micValue );
+void readAirVelocity() {
+    unsigned int airVelocityReading = analogRead ( PIEZO_PIN );
+    if ( airVelocityReading > maxAirVelocityReading ) {
+        maxAirVelocityReading = airVelocityReading;
     }
-    micValue -= zeroMicValue;
-    totalMicValue += micValue;
-    iterations++;
 }
 
 void readDebug() {
     debug = digitalRead ( DEBUG_PIN );
 }
 
-unsigned int convertNote() {
-    noteStruct note;
+void findNote() {
     for ( int i = 0; i < noteCount; i++ ) {
         note = notes[i];
-        if ( ( trumpetValve1Down == note.valve1Down ) && ( trumpetValve2Down == note.valve2Down ) && ( trumpetValve3Down == note.valve3Down ) && ( quantizedMicValue == note.micValue ) ) {
-            Serial.print ( "Note: " );
-            Serial.println ( note.name );
-            return note.midiValue;
+        if ( ( trumpetValve1Down == note.valve1Down ) && ( trumpetValve2Down == note.valve2Down ) && ( trumpetValve3Down == note.valve3Down ) && ( quantizedAirVelocity == note.quantizedAirVelocity ) ) {
+            lastNote = &note;
+            return;
         }
     }
+    lastNote = NULL;
 }
 
-
-
-
-void sendAllData() {
-    if ( debug ) {
-        Serial.print ( totalMicValue, DEC );
-        Serial.print ( " " );
-        Serial.println ( iterations, DEC );
+void printDebug() {
+    Serial.print ( "air velocity: " );
+    Serial.print ( maxAirVelocityReading, DEC );
+    Serial.print ( "/" );
+    Serial.print ( quantizedAirVelocity, DEC );
+    Serial.print ( ", buttons: " );
+    Serial.print ( trumpetValve1Down );
+    Serial.print ( " " );
+    Serial.print ( trumpetValve2Down );
+    Serial.print ( " " );
+    Serial.print ( trumpetValve3Down );
+    Serial.print ( ", Note: " );
+    if ( lastNote ) {
+        Serial.print ( lastNote->name );
+        Serial.print ( " midi value: " );
+        Serial.print ( lastNote->midiValue );
     } else {
-        Serial.write ( 255 );
+        Serial.print ( "none" );
     }
-    sendByte ( quantizedMicValue );
-    sendByte ( trumpetValve1Down );
-    sendByte ( trumpetValve2Down );
-    sendByte ( trumpetValve3Down );
-}
-
-void sendByte ( int value ) {
-    if ( debug ) {
-        Serial.print ( value, DEC );
-        Serial.print ( " " );
-    } else {
-        Serial.write ( value );
-    }
+    Serial.print ( ", iterations: " );
+    Serial.println ( iterations, DEC );
 }
