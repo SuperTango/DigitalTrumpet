@@ -6,10 +6,7 @@ const int TRUMPET_VALVE_2_PIN = 11;
 const int TRUMPET_VALVE_3_PIN = 12;
 const int DEBUG_PIN = A5;
 
-const int sendDataInterval = 200;
-const int maxPossibleAirVelocityReading = 50;
-
-float airVelocityReadingDivisor = (float)maxPossibleAirVelocityReading / 4.0;
+const int sendDataInterval = 20;
 
 typedef struct {
     char *name;
@@ -47,7 +44,13 @@ noteStruct notes[noteCount] = {
 bool trumpetValve1Down = false;
 bool trumpetValve2Down = false;
 bool trumpetValve3Down = false;
+
+bool lastTrumpetValve1Down = false;
+bool lastTrumpetValve2Down = false;
+bool lastTrumpetValve3Down = false;
+
 unsigned int quantizedAirVelocity = 0;
+unsigned int lastQuantizedAirVelocity = 0;
 bool debug = 0;
 noteStruct *lastNote;
 noteStruct note;
@@ -62,6 +65,30 @@ void setup() {
     lastSendDataTimestamp = 0;
 }
 
+unsigned int quantizeAirVelocity ( unsigned int airVelocityReading ) {
+    unsigned int quantizedAirVelocity;
+
+    if ( airVelocityReading < 10 ) {
+        lastQuantizedAirVelocity = 0;
+        quantizedAirVelocity = 0;
+    }  else if ( airVelocityReading <= 100 ) {
+        if ( lastQuantizedAirVelocity <= 1 ) {
+            quantizedAirVelocity = 1;
+            lastQuantizedAirVelocity = 1;
+        } else {
+            return 0;
+        }
+    } else {
+        if ( lastQuantizedAirVelocity <= 2 ) {
+            quantizedAirVelocity = 2;
+            lastQuantizedAirVelocity = 2;
+        } else {
+            return 0;
+        }
+    }
+    return quantizedAirVelocity;
+}
+
 void loop() {
     readValves();
     readAirVelocity();
@@ -70,7 +97,7 @@ void loop() {
 
     timestamp = millis();
     if ( timestamp >= ( lastSendDataTimestamp + sendDataInterval ) ) {
-        quantizedAirVelocity = maxAirVelocityReading / airVelocityReadingDivisor;
+        quantizedAirVelocity = quantizeAirVelocity ( maxAirVelocityReading );
         lastSendDataTimestamp = timestamp;
         findNote();
         if ( debug ) {
@@ -119,6 +146,9 @@ void findNote() {
 }
 
 void printDebug() {
+    if ( maxAirVelocityReading == 0 ) {
+        return;
+    }
     Serial.print ( "air velocity: " );
     Serial.print ( maxAirVelocityReading, DEC );
     Serial.print ( "/" );
