@@ -55,7 +55,7 @@ noteStruct note;
 void setup() {
     Serial.begin ( 115200 );
     pinMode ( PIEZO_PIN, INPUT );
-    pinMode ( DEBUG_PIN, INPUT );
+    pinMode ( DEBUG_PIN, INPUT_PULLUP );
     pinMode ( TRUMPET_VALVE_1_PIN, INPUT_PULLUP );
     pinMode ( TRUMPET_VALVE_2_PIN, INPUT_PULLUP );
     pinMode ( TRUMPET_VALVE_3_PIN, INPUT_PULLUP );
@@ -99,7 +99,7 @@ void readAirVelocity() {
 }
 
 void readDebug() {
-    debug = digitalRead ( DEBUG_PIN );
+    debug = ! digitalRead ( DEBUG_PIN );
 }
 
 void findNote() {
