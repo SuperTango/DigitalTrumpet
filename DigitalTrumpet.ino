@@ -76,9 +76,14 @@ void loop() {
         if ( debug ) {
             printDebug();
         } else {
+            Serial.write ( 255 );
             if ( lastNote ) {
                 Serial.write ( lastNote->midiValue );
+            } else {
+                Serial.write ( 0 );
             }
+            Serial.write ( maxAirVelocityReading );
+            Serial.write ( quantizedAirVelocity );
         }
         iterations = 0;
         maxAirVelocityReading = 0;
