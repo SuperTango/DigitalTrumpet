@@ -23,8 +23,9 @@ unsigned long lastSendDataTimestamp;
 unsigned long timestamp;
 unsigned int maxAirVelocityReading = 0;
 
-const unsigned int noteCount = 13;
+const unsigned int noteCount = 5;
 
+/*
 noteStruct notes[noteCount] = { 
     { "C",  60, 0, 0, 0, 1 },
     { "C#", 61, 1, 1, 1, 1 },
@@ -39,6 +40,14 @@ noteStruct notes[noteCount] = {
     { "A#", 70, 1, 0, 0, 2 },
     { "B",  71, 0, 2, 0, 2 },
     { "C",  72, 0, 0, 0, 3 },
+};
+*/
+noteStruct notes[noteCount] = { 
+    { "C",  60, 0, 0, 0, 1 },
+    { "E",  64, 1, 1, 0, 1 },
+    { "F",  65, 1, 0, 0, 1 },
+    { "G",  67, 1, 0, 1, 1 },
+    { "C",  72, 1, 1, 1, 1 },
 };
 
 bool trumpetValve1Down = false;
