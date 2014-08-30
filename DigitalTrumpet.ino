@@ -22,8 +22,9 @@ unsigned long iterations = 0;
 unsigned long lastSendDataTimestamp;
 unsigned long timestamp;
 unsigned int maxAirVelocityReading = 0;
+bool playingState = 0;
 
-const unsigned int noteCount = 5;
+const unsigned int noteCount = 7;
 
 /*
 noteStruct notes[noteCount] = { 
@@ -43,11 +44,16 @@ noteStruct notes[noteCount] = {
 };
 */
 noteStruct notes[noteCount] = { 
-    { "C",  60, 0, 0, 0, 1 },
-    { "E",  64, 1, 1, 0, 1 },
-    { "F",  65, 1, 0, 0, 1 },
-    { "G",  67, 1, 0, 1, 1 },
-    { "C",  72, 1, 1, 1, 1 },
+    //{ "C",  60, 0, 0, 0, 1 },
+    { "E",  64, 1, 1, 1, 1 },
+    { "F",  65, 1, 0, 1, 1 },
+    { "G",  67, 0, 1, 1, 1 },
+    { "C",  72, 1, 1, 0, 1 },
+    { "E",  76, 1, 0, 0, 1 },
+    { "F",  77, 0, 1 ,0, 1 },
+    { "G",  79, 0, 0 ,1, 1 }
+
+    //{ "G",  79, 0, 1 ,0, 1 },
 };
 
 bool trumpetValve1Down = false;
@@ -63,6 +69,7 @@ unsigned int lastQuantizedAirVelocity = 0;
 bool debug = 0;
 noteStruct *lastNote;
 noteStruct note;
+unsigned long last3On = 0;
 
 void setup() {
     Serial.begin ( 115200 );
@@ -130,6 +137,17 @@ void readValves() {
     trumpetValve1Down = ! digitalRead ( TRUMPET_VALVE_1_PIN );
     trumpetValve2Down = ! digitalRead ( TRUMPET_VALVE_2_PIN );
     trumpetValve3Down = ! digitalRead ( TRUMPET_VALVE_3_PIN );
+    /*
+    if ( trumpetValve3Down ) {
+        unsigned long now = millis();
+        if ( now - last3On > 250 ) {
+            playingState = ! playingState;
+            last3On = now;
+        } else {
+            last3On = 0;
+        }
+    }
+    */
 }
 
 void readAirVelocity() {
@@ -146,7 +164,7 @@ void readDebug() {
 void findNote() {
     for ( int i = 0; i < noteCount; i++ ) {
         note = notes[i];
-        if ( ( trumpetValve1Down == note.valve1Down ) && ( trumpetValve2Down == note.valve2Down ) && ( trumpetValve3Down == note.valve3Down ) && ( quantizedAirVelocity == note.quantizedAirVelocity ) ) {
+        if ( ( trumpetValve1Down == note.valve1Down ) && ( trumpetValve2Down == note.valve2Down ) && ( trumpetValve3Down == note.valve3Down ) ) {
             lastNote = &note;
             return;
         }
